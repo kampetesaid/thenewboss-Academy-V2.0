@@ -13,6 +13,14 @@
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MV98SNX3S9"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-MV98SNX3S9');
+    </script>
 
 </head>
 
@@ -475,8 +483,7 @@
             </div>
 
             <div class="reveal">
-                <form class="booking-form" id="bookingForm" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
-                    <input type="hidden" name="_subject" value="Nouvelle demande de rendez-vous — TheNEW Boss Academy">
+                <form class="booking-form" id="bookingForm">
                     <div id="bookingFormFields">
                         <div class="form-row">
                             <div class="field">
@@ -510,8 +517,7 @@
                             </div>
                             <div class="field">
                                 <label data-i18n="booking.formSlotLabel">Créneau préféré</label>
-                                <!-- data-slot garde volontairement sa valeur en français : c'est la donnée
-                   envoyée au formulaire (Formspree), seul le texte affiché est traduit -->
+                                <!-- La valeur envoyée dans le message WhatsApp reste indépendante du texte traduit. -->
                                 <div class="slot-group" id="slotGroup">
                                     <button type="button" class="slot-btn" data-slot="Matin"
                                         data-i18n="booking.slotMorning">Matin</button>
@@ -593,7 +599,8 @@
                 </div>
 
                 <div class="social-row">
-                    <a href="#" data-i18n-aria="contact.socialFacebook" aria-label="Facebook">f</a>
+                    <a href="https://www.facebook.com/share/19eXgrMbtr/" data-i18n-aria="contact.socialFacebook"
+                        aria-label="Facebook">f</a>
                     <a href="#" data-i18n-aria="contact.socialLinkedin" aria-label="LinkedIn">in</a>
                     <a href="https://wa.me/237692274316" target="_blank" rel="noopener"
                         data-i18n-aria="contact.socialWhatsapp" aria-label="WhatsApp">wa</a>
@@ -602,8 +609,7 @@
             </div>
 
             <div class="reveal">
-                <form class="contact-form" id="contactForm" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
-                    <input type="hidden" name="_subject" value="Nouveau message — Contact TheNEW Boss Academy">
+                <form class="contact-form" id="contactForm">
                     <div class="field">
                         <label for="c-name" data-i18n="contact.formNameLabel">Nom complet</label>
                         <input type="text" id="c-name" name="name" placeholder="Votre nom"
@@ -611,8 +617,7 @@
                     </div>
                     <div class="field">
                         <label for="c-contact" data-i18n="contact.formContactLabel">Email ou téléphone</label>
-                        <input type="text" id="c-contact" name="contact" placeholder="thenewbossacademy@gmail.com.com"
-                            required>
+                        <input type="text" id="c-contact" name="contact" placeholder="contact@moi.com" required>
                     </div>
                     <div class="field">
                         <label for="c-msg" data-i18n="contact.formMsgLabel">Votre message</label>
@@ -870,25 +875,20 @@
         });
     });
 
-    // Generic AJAX submit helper for Formspree-style endpoints.
-    // If the endpoint hasn't been configured yet (still contains "YOUR_FORM_ID"),
-    // it skips the network call so the demo flow still works before setup.
-    async function submitForm(form) {
-        const action = form.getAttribute('action') || '';
-        const isConfigured = action.startsWith('http') && !action.includes('YOUR_FORM_ID');
-        if (!isConfigured) {
-            return { ok: true, demo: true };
-        }
-        try {
-            const res = await fetch(action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json' }
-            });
-            return { ok: res.ok, demo: false };
-        } catch (err) {
-            return { ok: false, demo: false };
-        }
+    // WhatsApp ne permet pas l'envoi silencieux depuis un site web :
+    // le formulaire ouvre une conversation avec un message prérempli,
+    // que le visiteur confirme ensuite dans WhatsApp.
+    const whatsappNumber = '237692274316';
+
+    function openWhatsAppMessage(message) {
+        const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+        const popup = window.open(url, '_blank', 'noopener,noreferrer');
+        return !!popup;
+    }
+
+    function getFormValue(form, name) {
+        const value = new FormData(form).get(name);
+        return value ? String(value).trim() : 'Non renseigné';
     }
 
     // Booking form submit
@@ -896,15 +896,27 @@
     const bookingFields = document.getElementById('bookingFormFields');
     const bookingSuccess = document.getElementById('bookingSuccess');
     const bookingSubmitBtn = bookingForm.querySelector('.booking-submit');
-    bookingForm.addEventListener('submit', async (e) => {
+    bookingForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const originalLabel = bookingSubmitBtn.textContent;
         bookingSubmitBtn.textContent = 'Envoi en cours…';
         bookingSubmitBtn.disabled = true;
-        const result = await submitForm(bookingForm);
+        const message = [
+            'Bonjour TheNEW Boss Academy,',
+            '',
+            'Nouvelle demande de rendez-vous',
+            `Nom : ${getFormValue(bookingForm, 'name')}`,
+            `Téléphone / WhatsApp : ${getFormValue(bookingForm, 'phone')}`,
+            `Email : ${getFormValue(bookingForm, 'email')}`,
+            `Type de rendez-vous : ${getFormValue(bookingForm, 'type')}`,
+            `Date souhaitée : ${getFormValue(bookingForm, 'date')}`,
+            `Créneau préféré : ${getFormValue(bookingForm, 'creneau')}`,
+            `Projet ou besoin : ${getFormValue(bookingForm, 'message')}`
+        ].join('\n');
+        const sent = openWhatsAppMessage(message);
         bookingSubmitBtn.textContent = originalLabel;
         bookingSubmitBtn.disabled = false;
-        if (result.ok) {
+        if (sent) {
             bookingFields.style.display = 'none';
             bookingSuccess.classList.add('show');
         } else {
@@ -920,15 +932,23 @@
 
     // Contact form submit
     const contactForm = document.getElementById('contactForm');
-    contactForm.addEventListener('submit', async (e) => {
+    contactForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const btn = contactForm.querySelector('button[type="submit"]');
         const original = btn.textContent;
         btn.textContent = 'Envoi en cours…';
         btn.disabled = true;
-        const result = await submitForm(contactForm);
+        const message = [
+            'Bonjour TheNEW Boss Academy,',
+            '',
+            'Nouveau message depuis le site',
+            `Nom : ${getFormValue(contactForm, 'name')}`,
+            `Contact : ${getFormValue(contactForm, 'contact')}`,
+            `Message : ${getFormValue(contactForm, 'message')}`
+        ].join('\n');
+        const sent = openWhatsAppMessage(message);
         btn.disabled = false;
-        if (result.ok) {
+        if (sent) {
             btn.textContent = 'Message envoyé ✓';
             contactForm.reset();
             setTimeout(() => { btn.textContent = original; }, 3000);
